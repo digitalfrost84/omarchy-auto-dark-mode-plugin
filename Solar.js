@@ -29,13 +29,9 @@ function declination(longitude) {
   return Math.asin(Math.sin(longitude) * Math.sin(rad * 23.4397))
 }
 
-function altitudeFor(eventName) {
-  return eventName === "sunrise" ? -0.833 : -6.0
-}
-
 // SunCalc/NOAA-style solar transit calculation. The supplied Date may be at
-// any local time; local noon is used by the caller to select the civil day.
-function timesFor(date, latitude, longitude, eventName, dawnOffset, duskOffset) {
+// any local time; local noon is used by the caller to select the calendar day.
+function timesFor(date, latitude, longitude, lightAngle, darkAngle) {
   var lw = -Number(longitude) * rad
   var phi = Number(latitude) * rad
   var days = toJulian(date) - j2000
@@ -46,20 +42,27 @@ function timesFor(date, latitude, longitude, eventName, dawnOffset, duskOffset) 
   var transit = j2000 + approxTransit + 0.0053 * Math.sin(meanAnomaly)
     - 0.0069 * Math.sin(2 * ecliptic)
   var decl = declination(ecliptic)
-  var height = altitudeFor(eventName) * rad
   var denominator = Math.cos(phi) * Math.cos(decl)
-  var cosHour = (Math.sin(height) - Math.sin(phi) * Math.sin(decl)) / denominator
+  var lightCosHour = (Math.sin(Number(lightAngle) * rad)
+    - Math.sin(phi) * Math.sin(decl)) / denominator
+  var darkCosHour = (Math.sin(Number(darkAngle) * rad)
+    - Math.sin(phi) * Math.sin(decl)) / denominator
 
-  if (cosHour > 1) return { polar: "night", dawn: null, dusk: null }
-  if (cosHour < -1) return { polar: "day", dawn: null, dusk: null }
+  // If the morning threshold is never reached, light mode cannot begin. If
+  // the evening threshold is never fallen below, dark mode cannot begin.
+  if (lightCosHour > 1) return { polar: "night", dawn: null, dusk: null }
+  if (darkCosHour < -1) return { polar: "day", dawn: null, dusk: null }
 
-  var hourAngle = Math.acos(cosHour)
-  var setJulian = transit + hourAngle / (2 * Math.PI)
-  var riseJulian = transit - hourAngle / (2 * Math.PI)
+  var riseJulian = lightCosHour < -1 ? null
+    : transit - Math.acos(lightCosHour) / (2 * Math.PI)
+  var setJulian = darkCosHour > 1 ? null
+    : transit + Math.acos(darkCosHour) / (2 * Math.PI)
+  if (riseJulian === null) return { polar: "day", dawn: null, dusk: null }
+  if (setJulian === null) return { polar: "night", dawn: null, dusk: null }
   return {
     polar: "",
-    dawn: new Date(fromJulian(riseJulian).getTime() + Number(dawnOffset || 0) * 60000),
-    dusk: new Date(fromJulian(setJulian).getTime() + Number(duskOffset || 0) * 60000)
+    dawn: fromJulian(riseJulian),
+    dusk: fromJulian(setJulian)
   }
 }
 
@@ -67,8 +70,8 @@ function localNoon(date, dayDelta) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate() + (dayDelta || 0), 12, 0, 0, 0)
 }
 
-function schedule(now, latitude, longitude, eventName, dawnOffset, duskOffset) {
-  var today = timesFor(localNoon(now, 0), latitude, longitude, eventName, dawnOffset, duskOffset)
+function schedule(now, latitude, longitude, lightAngle, darkAngle) {
+  var today = timesFor(localNoon(now, 0), latitude, longitude, lightAngle, darkAngle)
   if (today.polar) {
     return {
       phase: today.polar,
@@ -90,7 +93,7 @@ function schedule(now, latitude, longitude, eventName, dawnOffset, duskOffset) {
     nextKind = "dusk"
     nextAt = today.dusk
   } else {
-    var tomorrow = timesFor(localNoon(now, 1), latitude, longitude, eventName, dawnOffset, duskOffset)
+    var tomorrow = timesFor(localNoon(now, 1), latitude, longitude, lightAngle, darkAngle)
     nextKind = tomorrow.polar ? "" : "dawn"
     nextAt = tomorrow.dawn
   }

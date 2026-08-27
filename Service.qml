@@ -25,9 +25,8 @@ Item {
   readonly property bool automatic: setting("automatic", true) === true
   readonly property real latitude: Number(setting("latitude", NaN))
   readonly property real longitude: Number(setting("longitude", NaN))
-  readonly property string eventName: String(setting("event", "civil")) === "sunrise" ? "sunrise" : "civil"
-  readonly property int dawnOffset: Number(setting("dawnOffset", 0))
-  readonly property int duskOffset: Number(setting("duskOffset", 0))
+  readonly property real lightAngle: Number(setting("lightAngle", 3))
+  readonly property real darkAngle: Number(setting("darkAngle", 3))
   readonly property string lightTheme: String(setting("lightTheme", "Catppuccin Latte"))
   readonly property string darkTheme: String(setting("darkTheme", "Catppuccin"))
   readonly property string desiredTheme: solar.phase === "day" ? lightTheme : darkTheme
@@ -60,7 +59,7 @@ Item {
       return false
     }
     errorMessage = ""
-    solar = Solar.schedule(now, latitude, longitude, eventName, dawnOffset, duskOffset)
+    solar = Solar.schedule(now, latitude, longitude, lightAngle, darkAngle)
     return true
   }
 
@@ -141,7 +140,9 @@ Item {
   function nextLabel() {
     if (errorMessage) return errorMessage
     if (!automatic) return "Automatic switching is off"
-    if (solar.polar) return solar.polar === "day" ? "Polar day · light theme" : "Polar night · dark theme"
+    if (solar.polar) return solar.polar === "day"
+      ? "Sun stays above threshold · light theme"
+      : "Sun stays below threshold · dark theme"
     if (!solar.nextAt) return "No solar transition"
     var label = solar.nextKind === "dawn" ? "Light" : "Dark"
     return label + " at " + Qt.formatTime(solar.nextAt, "HH:mm")

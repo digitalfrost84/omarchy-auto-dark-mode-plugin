@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "id": "digitalfrost84.auto-dark-mode",
   "name": "Auto Dark Mode",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "digitalfrost84",
   "license": "MIT",
-  "description": "Automatically switch Omarchy themes at local dawn and dusk, with offsets and manual control.",
+  "description": "Automatically switch Omarchy themes using the Sun's local elevation.",
   "kinds": [
     "service",
     "bar-widget"
@@ -25,9 +25,8 @@
       "automatic": false,
       "latitude": null,
       "longitude": null,
-      "event": "civil",
-      "dawnOffset": 0,
-      "duskOffset": 0,
+      "lightAngle": 3,
+      "darkAngle": 3,
       "lightTheme": "Catppuccin Latte",
       "darkTheme": "Catppuccin"
     }

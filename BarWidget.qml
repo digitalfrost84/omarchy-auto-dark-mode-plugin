@@ -26,7 +26,11 @@ BarWidget {
 
   function persist(values) {
     var entry = { id: moduleName }
-    for (var existing in settings) if (existing !== "id") entry[existing] = settings[existing]
+    for (var existing in settings)
+      if (existing !== "id" && existing !== "event"
+          && existing !== "dawnOffset" && existing !== "duskOffset"
+          && existing !== "sunAngle")
+        entry[existing] = settings[existing]
     for (var key in values) entry[key] = values[key]
     settings = entry
     if (bar && bar.shell && typeof bar.shell.updateEntryInline === "function")
@@ -38,8 +42,8 @@ BarWidget {
     var lon = setting("longitude", "")
     latitudeField.text = lat === null ? "" : String(lat)
     longitudeField.text = lon === null ? "" : String(lon)
-    dawnOffsetField.text = String(setting("dawnOffset", 0))
-    duskOffsetField.text = String(setting("duskOffset", 0))
+    lightAngleField.text = String(setting("lightAngle", 3))
+    darkAngleField.text = String(setting("darkAngle", 3))
     lightThemeField.value = String(setting("lightTheme", "Catppuccin Latte"))
     darkThemeField.value = String(setting("darkTheme", "Catppuccin"))
   }
@@ -47,16 +51,23 @@ BarWidget {
   function saveFields() {
     var lat = Number(latitudeField.text)
     var lon = Number(longitudeField.text)
+    var lightAngle = Number(lightAngleField.text)
+    var darkAngle = Number(darkAngleField.text)
     if (!isFinite(lat) || lat < -90 || lat > 90 || !isFinite(lon) || lon < -180 || lon > 180) {
       formError.text = "Coordinates must be latitude −90…90 and longitude −180…180."
+      return
+    }
+    if (!isFinite(lightAngle) || lightAngle < -18 || lightAngle > 20
+        || !isFinite(darkAngle) || darkAngle < -18 || darkAngle > 20) {
+      formError.text = "Sun angles must be between −18° and 20°."
       return
     }
     formError.text = ""
     persist({
       latitude: lat,
       longitude: lon,
-      dawnOffset: Math.round(Number(dawnOffsetField.text) || 0),
-      duskOffset: Math.round(Number(duskOffsetField.text) || 0),
+      lightAngle: lightAngle,
+      darkAngle: darkAngle,
       lightTheme: lightThemeField.value,
       darkTheme: darkThemeField.value
     })
@@ -170,8 +181,8 @@ BarWidget {
 
         LabeledField { id: latitudeField; label: "LATITUDE"; placeholderText: "52.5200" }
         LabeledField { id: longitudeField; label: "LONGITUDE"; placeholderText: "13.4050" }
-        LabeledField { id: dawnOffsetField; label: "DAWN OFFSET · MIN"; placeholderText: "0" }
-        LabeledField { id: duskOffsetField; label: "DUSK OFFSET · MIN"; placeholderText: "0" }
+        LabeledField { id: lightAngleField; label: "LIGHT AT · SUN °"; placeholderText: "3" }
+        LabeledField { id: darkAngleField; label: "DARK AT · SUN °"; placeholderText: "3" }
         Dropdown {
           id: lightThemeField
           width: (content.width - Style.space(8)) / 2
@@ -187,25 +198,6 @@ BarWidget {
           options: root.themeOptions
           value: String(root.setting("darkTheme", "Catppuccin"))
           foreground: root.bar ? root.bar.foreground : Color.foreground
-        }
-      }
-
-      Row {
-        width: parent.width
-        spacing: Style.space(8)
-        Text {
-          anchors.verticalCenter: parent.verticalCenter
-          width: parent.width - eventButton.width - parent.spacing
-          text: "Solar event"
-          color: root.bar ? root.bar.foreground : Color.foreground
-          font.family: root.bar ? root.bar.fontFamily : Style.font.family
-          font.pixelSize: Style.font.body
-        }
-        Button {
-          id: eventButton
-          text: root.setting("event", "civil") === "sunrise" ? "Sunrise / sunset" : "Civil dawn / dusk"
-          bordered: true
-          onClicked: root.persist({ event: root.setting("event", "civil") === "sunrise" ? "civil" : "sunrise" })
         }
       }
 
