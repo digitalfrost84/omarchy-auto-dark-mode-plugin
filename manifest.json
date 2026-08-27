@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "id": "digitalfrost84.auto-dark-mode",
+  "name": "Auto Dark Mode",
+  "version": "1.0.0",
+  "author": "digitalfrost84",
+  "license": "MIT",
+  "description": "Automatically switch Omarchy themes at local dawn and dusk, with offsets and manual control.",
+  "kinds": [
+    "service",
+    "bar-widget"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "service": "Service.qml",
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Auto Dark Mode",
+    "description": "Automatic light and dark themes following the sun.",
+    "category": "System",
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": {
+      "automatic": false,
+      "latitude": null,
+      "longitude": null,
+      "event": "civil",
+      "dawnOffset": 0,
+      "duskOffset": 0,
+      "lightTheme": "Catppuccin Latte",
+      "darkTheme": "Catppuccin"
+    }
+  }
+}
