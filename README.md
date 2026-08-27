@@ -4,6 +4,8 @@ Auto Dark Mode switches Omarchy between a chosen light and dark theme at the
 local solar boundary. It runs entirely inside the Omarchy shell and performs
 the astronomical calculation locally; coordinates are never sent anywhere.
 
+![Auto Dark Mode settings](preview.png)
+
 ## Install
 
 ```sh
@@ -27,6 +29,23 @@ Negative offsets happen before an event; positive offsets happen after it.
 Middle-click the widget to re-evaluate immediately. Selecting **Light now** or
 **Dark now** temporarily overrides automation until the next solar transition,
 including across shell restarts.
+
+### Civil dawn/dusk or sunrise/sunset?
+
+**Sunrise / sunset** switches at the moment the Sun's upper edge reaches the
+horizon. This follows the conventional published sunrise and sunset times, but
+the sky is already noticeably bright before sunrise and remains bright after
+sunset.
+
+**Civil dawn / dusk** switches when the Sun is 6° below the horizon. Civil dawn
+is the beginning of morning twilight; civil dusk is the end of evening
+twilight. This usually feels more natural for desktop themes because light mode
+starts as outdoor light appears, while dark mode waits until twilight is nearly
+over.
+
+Offsets fine-tune either choice. For example, a dawn offset of `30` switches to
+light mode 30 minutes after the selected morning event, while a dusk offset of
+`-15` switches to dark mode 15 minutes before the selected evening event.
 
 If the shell is not currently running, enable the plugin after installation:
 
