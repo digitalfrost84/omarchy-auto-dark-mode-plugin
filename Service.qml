@@ -18,6 +18,7 @@ Item {
   property string errorMessage: ""
   property string pendingTheme: ""
   property bool pendingManual: false
+  property bool themeCheckFound: false
 
   readonly property string pluginId: "digitalfrost84.auto-dark-mode"
   readonly property var settings: findSettings()
@@ -85,8 +86,9 @@ Item {
     if (!name || applyProcess.running || themeCheck.running) return
     pendingTheme = name
     pendingManual = manual === true
+    themeCheckFound = false
     errorMessage = ""
-    themeCheck.command = ["omarchy", "theme", "dir", name]
+    themeCheck.command = ["omarchy", "theme", "list"]
     themeCheck.running = true
   }
 
@@ -174,12 +176,20 @@ Item {
 
   Process {
     id: themeCheck
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        var names = text.split("\n").map(function(value) { return value.trim() })
+          .filter(function(value) { return value !== "" })
+        root.themeCheckFound = names.indexOf(root.pendingTheme) !== -1
+      }
+    }
     onExited: function(exitCode) {
       var name = root.pendingTheme
       var manual = root.pendingManual
       root.pendingTheme = ""
       root.pendingManual = false
-      if (exitCode === 0) root.runApplyTheme(name, manual)
+      if (exitCode === 0 && root.themeCheckFound) root.runApplyTheme(name, manual)
       else root.errorMessage = "Theme not found: " + name
     }
   }

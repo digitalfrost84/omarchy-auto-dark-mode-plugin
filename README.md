@@ -38,7 +38,7 @@ omarchy plugin enable digitalfrost84.auto-dark-mode
 
 The plugin uses no network services and adds no package dependencies. It runs
 unsandboxed with normal user permissions, like all Omarchy shell plugins, and
-only launches the local `omarchy theme list`, `current`, `dir`, and `set`
+only launches the local `omarchy theme list`, `current`, and `set`
 commands. Manual-override state is stored at
 `~/.local/state/omarchy/auto-dark-mode.json`.
 
