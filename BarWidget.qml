@@ -94,11 +94,12 @@ BarWidget {
     }
   }
 
-  PopupCard {
+  KeyboardPanel {
     id: popup
     anchorItem: button
     bar: root.bar
     owner: root
+    focusTarget: latitudeField.focusItem
     open: root.popupOpen
     contentWidth: fittedContentWidth(Style.space(390))
     contentHeight: fittedContentHeight(content.implicitHeight)
@@ -233,6 +234,7 @@ BarWidget {
     property string label: ""
     property string placeholderText: ""
     property alias text: input.text
+    property alias focusItem: input
     width: (content.width - Style.space(8)) / 2
     spacing: Style.space(4)
     Text {
@@ -247,6 +249,12 @@ BarWidget {
       id: input
       width: parent.width
       placeholderText: parent.placeholderText
+      focusPolicy: Qt.StrongFocus
+      activeFocusOnPress: true
+
+      // Popup fields do not reliably inherit keyboard focus from the bar's
+      // Hyprland focus grab. Claim it explicitly when the field is clicked.
+      onPressed: forceActiveFocus()
     }
   }
 
