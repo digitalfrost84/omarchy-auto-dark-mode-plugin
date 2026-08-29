@@ -12,13 +12,19 @@ Item {
   property var solar: ({ phase: "night", nextKind: "", nextAt: null, polar: "" })
   property string currentTheme: ""
   property string lastAppliedTheme: ""
+  property bool themeLoaded: false
   property bool manualOverride: false
   property double manualOverrideUntil: 0
+  property var wallpapers: ({})
   property bool stateLoaded: false
   property string errorMessage: ""
   property string pendingTheme: ""
   property bool pendingManual: false
   property bool themeCheckFound: false
+  property string applyingTheme: ""
+  property string backgroundProbePurpose: ""
+  property string backgroundProbeTheme: ""
+  property string probedBackgroundPath: ""
 
   readonly property string pluginId: "digitalfrost84.auto-dark-mode"
   readonly property var settings: findSettings()
@@ -64,7 +70,9 @@ Item {
   }
 
   function evaluate(force) {
-    if (!stateLoaded) return
+    // Reading Omarchy's persisted current theme first prevents a shell restart
+    // from needlessly reapplying the same theme and rotating its wallpaper.
+    if (!stateLoaded || !themeLoaded) return
     var previousKind = solar.nextKind
     var previousAt = solar.nextAt ? solar.nextAt.getTime() : 0
     if (!refreshSchedule() || !automatic) return
@@ -95,12 +103,52 @@ Item {
     if (manual) {
       manualOverride = true
       manualOverrideUntil = solar.nextAt ? solar.nextAt.getTime() : now.getTime() + 12 * 60 * 60 * 1000
-      persistOverride()
+      persistState()
     }
-    lastAppliedTheme = name
-    currentTheme = name
-    applyProcess.command = ["omarchy", "theme", "set", name]
+    applyingTheme = name
+    if (currentTheme) {
+      if (backgroundProbe.running)
+        backgroundProbePurpose = "beforeApply"
+      else
+        probeBackground(currentTheme, "beforeApply")
+    } else {
+      startThemeApply()
+    }
+  }
+
+  function startThemeApply() {
+    if (!applyingTheme || applyProcess.running) return
+    applyProcess.command = ["omarchy", "theme", "set", applyingTheme]
     applyProcess.running = true
+  }
+
+  function wallpaperKey(themeName) {
+    return String(themeName || "").trim().toLowerCase()
+  }
+
+  function rememberedWallpaper(themeName) {
+    return String(wallpapers[wallpaperKey(themeName)] || "")
+  }
+
+  function rememberWallpaper(themeName, path) {
+    var key = wallpaperKey(themeName)
+    var value = String(path || "").trim()
+    if (!key || !value || value[0] !== "/" || wallpapers[key] === value) return
+    var updated = ({})
+    for (var existing in wallpapers) updated[existing] = wallpapers[existing]
+    updated[key] = value
+    wallpapers = updated
+    persistState()
+  }
+
+  function probeBackground(themeName, purpose) {
+    if (!themeName || backgroundProbe.running) return
+    backgroundProbeTheme = themeName
+    backgroundProbePurpose = purpose || "observe"
+    probedBackgroundPath = ""
+    backgroundProbe.command = ["readlink", "-f",
+      Quickshell.env("HOME") + "/.local/state/omarchy/current/background"]
+    backgroundProbe.running = true
   }
 
   function clearManualOverride() {
@@ -108,13 +156,14 @@ Item {
     if (!manualOverride && manualOverrideUntil === 0) return
     manualOverride = false
     manualOverrideUntil = 0
-    persistOverride()
+    persistState()
   }
 
-  function persistOverride() {
+  function persistState() {
     stateFile.setText(JSON.stringify({
       manualOverride: manualOverride,
-      overrideUntil: manualOverrideUntil
+      overrideUntil: manualOverrideUntil,
+      wallpapers: wallpapers
     }, null, 2) + "\n")
   }
 
@@ -123,6 +172,8 @@ Item {
     try { state = JSON.parse(String(raw || "{}")) } catch (e) { state = ({}) }
     manualOverrideUntil = Number(state.overrideUntil || 0)
     manualOverride = state.manualOverride === true && manualOverrideUntil > Date.now()
+    wallpapers = state.wallpapers && typeof state.wallpapers === "object"
+      ? state.wallpapers : ({})
     if (!manualOverride) manualOverrideUntil = 0
     stateLoaded = true
     Qt.callLater(function() { root.evaluate(false) })
@@ -134,7 +185,8 @@ Item {
   }
 
   function refreshTheme() {
-    if (!themeProbe.running) themeProbe.running = true
+    if (!themeProbe.running && !applyProcess.running && !applyingTheme)
+      themeProbe.running = true
   }
 
   function nextLabel() {
@@ -209,10 +261,41 @@ Item {
             root.manualOverride = true
             root.manualOverrideUntil = root.solar.nextAt
               ? root.solar.nextAt.getTime() : Date.now() + 12 * 60 * 60 * 1000
-            root.persistOverride()
+            root.persistState()
           }
         root.currentTheme = observed
+        root.themeLoaded = true
+        root.probeBackground(observed, "observe")
+        Qt.callLater(function() { root.evaluate(false) })
       }
+    }
+  }
+
+  Process {
+    id: backgroundProbe
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: root.probedBackgroundPath = text.trim()
+    }
+    onExited: function(exitCode) {
+      var purpose = root.backgroundProbePurpose
+      var themeName = root.backgroundProbeTheme
+      root.backgroundProbePurpose = ""
+      root.backgroundProbeTheme = ""
+      if (exitCode === 0) root.rememberWallpaper(themeName, root.probedBackgroundPath)
+      root.probedBackgroundPath = ""
+      if (purpose === "beforeApply") root.startThemeApply()
+    }
+  }
+
+  Process {
+    id: restoreBackground
+    onExited: function(exitCode) {
+      // If a remembered file was removed, Omarchy keeps the theme's selected
+      // default. Probing it replaces the stale entry for the next switch.
+      root.probeBackground(root.currentTheme, "afterApply")
+      root.applyingTheme = ""
+      root.refreshTheme()
     }
   }
 
@@ -223,8 +306,24 @@ Item {
       onStreamFinished: if (text.trim()) root.errorMessage = text.trim().split("\n")[0]
     }
     onExited: function(exitCode) {
-      if (exitCode !== 0) root.currentTheme = ""
-      root.refreshTheme()
+      if (exitCode !== 0) {
+        root.currentTheme = ""
+        root.applyingTheme = ""
+        root.refreshTheme()
+        return
+      }
+      root.lastAppliedTheme = root.applyingTheme
+      root.currentTheme = root.applyingTheme
+      root.themeLoaded = true
+      var wallpaper = root.rememberedWallpaper(root.currentTheme)
+      if (wallpaper) {
+        restoreBackground.command = ["omarchy", "theme", "bg", "set", wallpaper]
+        restoreBackground.running = true
+      } else {
+        root.probeBackground(root.currentTheme, "afterApply")
+        root.applyingTheme = ""
+        root.refreshTheme()
+      }
     }
   }
 }

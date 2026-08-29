@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "digitalfrost84.auto-dark-mode",
   "name": "Auto Dark Mode",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "author": "digitalfrost84",
   "license": "MIT",
   "description": "Automatically switch Omarchy themes using the Sun's local elevation.",

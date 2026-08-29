@@ -1,6 +1,6 @@
 # Auto Dark Mode
 
-Auto Dark Mode switches Omarchy between a chosen light and dark theme at the
+Auto Dark Mode switches Omarchy between a chosen light and dark theme using
 the local Sun angle. It runs entirely inside the Omarchy shell and performs
 the astronomical calculation locally; coordinates are never sent anywhere.
 
@@ -27,6 +27,12 @@ The popup provides:
 Middle-click the widget to re-evaluate immediately. Selecting **Light now** or
 **Dark now** temporarily overrides automation until the next solar transition,
 including across shell restarts.
+
+The plugin remembers the last wallpaper used with each configured theme. A
+theme switch restores that wallpaper instead of replacing a user-selected
+background with the theme default. Omarchy's current-theme state remains the
+source of truth, so restarting the shell or logging in again keeps the active
+theme and does not reapply it merely because the plugin started.
 
 ### Choosing a Sun angle
 
@@ -62,8 +68,9 @@ omarchy plugin enable digitalfrost84.auto-dark-mode
 
 The plugin uses no network services and adds no package dependencies. It runs
 unsandboxed with normal user permissions, like all Omarchy shell plugins, and
-only launches the local `omarchy theme list`, `current`, and `set`
-commands. Manual-override state is stored at
+only launches the local `omarchy theme list`, `current`, `set`, and `bg set`
+commands, plus `readlink` to observe Omarchy's current background symlink.
+Manual-override and per-theme wallpaper state is stored at
 `~/.local/state/omarchy/auto-dark-mode.json`.
 
 ## Remove
