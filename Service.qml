@@ -38,10 +38,13 @@ Item {
   readonly property string desiredTheme: solar.phase === "day" ? lightTheme : darkTheme
 
   function findSettings() {
-    var config = shell ? shell.shellConfig : null
-    if (!config) return ({})
+    if (!shell) return ({})
+    // Current hosts expose barConfig through the scoped plugin API; older
+    // hosts supplied the full shellConfig instead.
+    var config = shell.shellConfig || ({})
+    var barConfig = shell.barConfig || config.bar || ({})
     var sections = ["left", "center", "right"]
-    var layout = config.bar && config.bar.layout ? config.bar.layout : ({})
+    var layout = barConfig.layout || ({})
     for (var s = 0; s < sections.length; s++) {
       var entries = layout[sections[s]] || []
       for (var i = 0; i < entries.length; i++)
