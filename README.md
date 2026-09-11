@@ -88,4 +88,5 @@ state file may be deleted separately if desired.
 omarchy plugin validate ~/.config/omarchy/plugins/digitalfrost84.auto-dark-mode
 /usr/lib/qt6/bin/qmllint -I /usr/share/omarchy/shell ~/.config/omarchy/plugins/digitalfrost84.auto-dark-mode/*.qml
 node tests/test-solar.js
+node tests/test-settings.js
 ```
